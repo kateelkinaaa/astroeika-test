@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Что с вами происходит именно сейчас?</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --ink:#14202B;
+    --text-body:#3A4550;
+    --text-dim:#5D6B78;
+    --blue:#3E74A8;
+    --blue-dark:#2C5680;
+    --blue-site:#88B9E7;
+    --blue-line:#DCE8F3;
+    --blue-soft:#F4F9FD;
+    --blue-soft-2:#EAF1F8;
+    --gold:#C9A961;
+    --gold-line:#E1CFA4;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:Georgia,'Times New Roman',serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  .app{
+    position:relative;z-index:1;
+    width:100%;max-width:480px;
+    padding:28px 20px 40px;
+    display:flex;flex-direction:column;
+  }
+  .progress{display:flex;gap:3px;margin-bottom:26px;}
+  .progress i{flex:1;height:3px;border-radius:2px;background:var(--blue-line);}
+  .progress i.done{background:var(--blue);}
+  .progress i.current{background:var(--blue-site);}
+
+  .screen{display:none;flex-direction:column;flex:1;animation:fade .35s ease;}
+  .screen.active{display:flex;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  h1{
+    font-family:Cormorant,Georgia,serif;
+    font-weight:600;font-size:34px;line-height:1.15;
+    margin:0 0 14px;color:var(--ink);
+  }
+  h1 em{font-style:italic;color:var(--blue);font-weight:600;}
+  h2{
+    font-family:Cormorant,Georgia,serif;
+    font-weight:600;font-size:28px;line-height:1.2;margin:0 0 18px;color:var(--ink);
+  }
+  h3{
+    font-family:Cormorant,Georgia,serif;
+    font-weight:600;font-size:23px;line-height:1.25;margin:0 0 8px;
+    color:var(--blue);
+  }
+  p{
+    font-size:16px;line-height:1.65;
+    color:var(--text-body);margin:0 0 14px;
+  }
+  p:last-child{margin-bottom:0;}
+  p.dim{color:var(--text-dim);}
+  p.lead{font-size:17px;line-height:1.62;}
+
+  /* ----- АКЦЕНТЫ ----- */
+  .acc{color:var(--blue);font-weight:600;}
+  .u{
+    text-decoration:underline;
+    text-decoration-color:var(--gold);
+    text-decoration-thickness:1px;
+    text-underline-offset:4px;
+  }
+  .strong{color:var(--ink);font-weight:600;}
+
+  .badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:6px 16px;border:1px solid var(--blue-line);border-radius:999px;
+    font-family:Cormorant,Georgia,serif;font-size:15px;letter-spacing:.08em;
+    color:var(--blue);margin-bottom:16px;width:fit-content;background:var(--blue-soft);
+  }
+  .badge span.dot{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block;}
+
+  .btn{
+    display:block;width:100%;text-align:center;
+    padding:16px 22px;border-radius:30px;
+    font-family:Georgia,'Times New Roman',serif;font-size:15.5px;
+    cursor:pointer;border:1px solid var(--blue-line);
+    background:#FFFFFF;color:var(--ink);margin-bottom:12px;
+    transition:background .2s ease, border-color .2s ease, transform .1s ease;text-decoration:none;
+  }
+  .btn:active{transform:scale(.985);}
+  .btn:hover{background:var(--blue-soft);border-color:var(--blue-site);}
+  .btn-option{text-align:left;line-height:1.45;border-radius:var(--radius);padding:15px 18px;}
+  .btn-primary{
+    background:var(--blue);border:none;color:#FFFFFF;
+    font-family:Cormorant,Georgia,serif;font-size:20px;font-weight:600;letter-spacing:.06em;
+  }
+  .btn-primary:hover{background:var(--blue-dark);}
+  .btn-ghost{border:1px solid var(--blue-site);color:var(--blue);background:#FFFFFF;
+    font-family:Cormorant,Georgia,serif;font-size:19px;font-weight:600;letter-spacing:.04em;}
+  .btn:last-child{margin-bottom:0;}
+
+  .spacer{flex:1;}
+
+  .card{
+    background:#FFFFFF;
+    border:1px solid var(--blue-line);
+    border-radius:var(--radius);
+    padding:20px 18px;margin-bottom:14px;
+    box-shadow:0 2px 14px rgba(20,60,100,.05);
+  }
+  .card-soft{background:var(--blue-soft);box-shadow:none;}
+  .card-map{background:var(--blue-soft-2);border:1px solid var(--blue-line);box-shadow:none;}
+  .eyebrow{
+    font-family:Cormorant,Georgia,serif;
+    font-size:14px;letter-spacing:.12em;color:var(--text-dim);
+    margin-bottom:10px;text-transform:uppercase;font-weight:600;
+  }
+  .eyebrow-gold{color:#9C7B32;}
+  .divider{
+    height:1px;
+    background:linear-gradient(90deg, transparent, var(--gold-line), transparent);
+    margin:22px 0;
+  }
+  .value-item{
+    display:flex;align-items:flex-start;gap:10px;
+    font-size:15px;line-height:1.55;
+    color:var(--text-body);margin-bottom:11px;
+  }
+  .value-item:last-child{margin-bottom:0;}
+  .value-mark{color:var(--gold);flex-shrink:0;margin-top:1px;}
+  .value-list{margin:14px 0 18px;padding:14px 0 2px;border-top:1px solid var(--blue-line);}
+  .value-eyebrow{
+    font-family:Cormorant,Georgia,serif;
+    font-size:15px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+    color:var(--blue);margin-bottom:12px;
+  }
+  .map-note{
+    margin-top:14px;padding-top:14px;
+    border-top:1px solid var(--blue-line);
+    font-size:15px;line-height:1.6;color:var(--text-body);
+  }
+  .map-note + .map-note{margin-top:12px;}
+  .map-note .eyebrow{margin-bottom:6px;}
+  .step-box{padding:2px 0;}
+  .note{
+    font-size:14px;line-height:1.6;color:var(--text-dim);
+    padding:14px 16px;background:var(--blue-soft);
+    border-radius:12px;margin-bottom:16px;
+  }
+  .q-num{font-family:Cormorant,Georgia,serif;font-size:16px;color:var(--text-dim);margin-bottom:10px;letter-spacing:.06em;}
+
+  /* ----- СОГЛАСИЯ ----- */
+  .consent{margin-bottom:16px;}
+  .check{
+    display:flex;align-items:flex-start;gap:12px;
+    font-size:14px;line-height:1.5;
+    color:var(--text-dim);margin-bottom:13px;cursor:pointer;
+  }
+  .check:last-child{margin-bottom:0;}
+  .check input{
+    appearance:auto;accent-color:var(--blue);
+    width:20px;height:20px;flex-shrink:0;margin:0;cursor:pointer;
+  }
+  .check a{
+    color:var(--blue);text-decoration:underline;
+    text-decoration-color:var(--blue-site);text-underline-offset:3px;
+  }
+  .dim-inline{color:var(--text-dim);}
+  .doc-pending{color:var(--blue);border-bottom:1px dashed var(--blue-site);}
+  .check-req{color:#B0483C;}
+  .btn-primary:disabled{background:var(--blue-site);opacity:.55;cursor:not-allowed;}
+  .welcome-name{color:var(--blue);font-weight:600;}
+
+  /* ----- МЕСТО ПОД ФОТОГРАФИЮ ----- */
+  .author{display:flex;align-items:center;gap:16px;}
+  .photo{
+    width:104px;height:104px;flex-shrink:0;
+    border-radius:50%;
+    border:2px solid var(--blue-line);
+    background:var(--blue-soft);
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .photo img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-empty{
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text-dim);text-align:center;line-height:1.4;padding:0 8px;
+  }
+  .author-text{flex:1;min-width:0;}
+  .author-text p{font-size:15.5px;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ЭКРАН 0: ПРИВЕТСТВИЕ -->
+  <div class="screen active" data-screen="welcome">
+    <div class="badge"><span class="dot"></span><span>тест · 12 вопросов</span></div>
+    <h1>Что с вами происходит <em>именно сейчас?</em></h1>
+
+    <p class="lead">Бывает состояние, которое непонятно как назвать. Снаружи ничего не случилось, а вы уже который месяц живете не так, как раньше. И в голове крутится один вопрос: <span class="u">почему это накрыло именно сейчас</span>.</p>
+
+    <div class="card card-map">
+      <div class="eyebrow eyebrow-gold">почему на это отвечает карта</div>
+      <div class="value-item"><span class="value-mark">✦</span><span>У любого состояния есть <span class="acc">начало и конец</span>, и в карте оно видно как период.</span></div>
+      <div class="value-item"><span class="value-mark">✦</span><span>Гороскоп по знаку читают миллионы людей одновременно, поэтому про вас лично он ничего не скажет. Карта отвечает на то, о чем спрашивают чаще всего: почему именно сейчас и сколько это продлится.</span></div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">кто спрашивает</div>
+      <div class="author">
+        <!-- МЕСТО ПОД ФОТОГРАФИЮ: подставить ссылку в PHOTO_URL в скрипте ниже -->
+        <div class="photo" id="photoBox"><span class="photo-empty">фото</span></div>
+        <div class="author-text">
+          <p>Меня зовут <span class="welcome-name">Екатерина Холкина</span>, я астропсихолог. Про звезды ко мне почти никто не приходит. Приходят с вопросом «что со мной происходит и почему именно сейчас».</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-soft">
+      <div class="eyebrow">как проходить</div>
+      <p><span class="acc">Двенадцать вопросов, пара минут.</span> Про то, как вы живете этот год и что уже пробовали в астрологии. Долго не думайте, отвечайте тем, что откликнулось первым.</p>
+    </div>
+
+    <p class="dim">Будущее я не предсказываю и что делать, не говорю. Тест покажет, какой у вас сейчас период и что про него видно в карте. Решаете все равно вы.</p>
+
+    <div class="note">Тест носит <span class="strong">информационный характер</span>. Его результат это общее описание типичной ситуации, а не диагноз и не индивидуальная рекомендация: медицинская, психологическая, юридическая или финансовая. Он не заменяет консультацию специалиста. Решения вы принимаете самостоятельно и несете за них ответственность сами.</div>
+
+    <div class="spacer"></div>
+
+    <div class="consent" id="consent">
+      <label class="check">
+        <input type="checkbox" id="chkData">
+        <span>Я принимаю <span id="docConsent"></span> и <span id="docPrivacy"></span> <span class="check-req">*</span></span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="chkTerms">
+        <span>Я ознакомлена с <span id="docTerms"></span> и с тем, что тест носит информационный характер <span class="check-req">*</span></span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="chkMail">
+        <span>Даю <span id="docMail"></span> от AstroEika <span class="check-req" id="mailReq" hidden>*</span></span>
+      </label>
+    </div>
+
+    <button class="btn btn-primary" id="startBtn" onclick="startQuiz()" disabled>начать</button>
+  </div>
+
+  <!-- ЭКРАН ВОПРОСОВ -->
+  <div class="screen" data-screen="question">
+    <div class="progress" id="progress"></div>
+    <div class="q-num" id="qNum"></div>
+    <h2 id="qText"></h2>
+    <div id="qOptions"></div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ЭКРАН РЕЗУЛЬТАТА -->
+  <div class="screen" data-screen="result">
+    <div class="badge"><span class="dot"></span><span id="resultStep"></span></div>
+    <h1 id="resultTitle"></h1>
+    <p id="resultIntro" class="dim"></p>
+
+    <div class="card">
+      <div class="eyebrow">что у вас сейчас</div>
+      <p id="blockWhat"></p>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">почему это накрыло именно сейчас</div>
+      <p id="blockWhy"></p>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow">сколько это длится и чем заканчивается</div>
+      <p id="blockNext"></p>
+    </div>
+
+    <div class="card card-map">
+      <div class="eyebrow eyebrow-gold">режим периода</div>
+      <h3 id="regimeTitle"></h3>
+      <p id="regimeBody"></p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card card-map">
+      <div class="eyebrow eyebrow-gold">ваша карта: что в ней смотреть</div>
+      <div id="mapBody"></div>
+
+      <div class="map-note">
+        <div class="eyebrow eyebrow-gold">время вашего рождения</div>
+        <span id="birthNote"></span>
+      </div>
+
+      <div class="map-note">
+        <div class="eyebrow eyebrow-gold">где вы сейчас в астрологии</div>
+        <span id="expNote"></span>
+      </div>
+
+      <div class="map-note">
+        <div class="eyebrow eyebrow-gold">где это в мини-курсе «Мой период»</div>
+        <span id="lessonNote"></span>
+      </div>
+    </div>
+
+    <div class="card card-soft">
+      <div class="eyebrow">один шаг на этой неделе</div>
+      <div class="step-box"><p id="stepBody"></p></div>
+    </div>
+
+    <div class="card card-soft">
+      <div class="eyebrow">рядом обычно идет еще одна тема</div>
+      <h3 id="secondaryTitle"></h3>
+      <p id="secondaryBody"></p>
+    </div>
+
+    <div class="note">Карта не говорит, что вам делать, и ничего за вас не решает. Она показывает, что происходит и почему именно сейчас.</div>
+
+    <div class="note">Это общее описание, а не диагноз и не индивидуальная рекомендация. Если тяжело давно и всерьез, плохо со сном и нет сил, <span class="strong">идите к врачу или психотерапевту</span>.</div>
+
+    <div class="divider"></div>
+
+    <div class="card">
+      <div class="eyebrow">что дальше</div>
+      <p id="ctaText"></p>
+
+      <div class="value-list">
+        <div class="value-eyebrow">мини-курс «Мой период: почему сейчас так»</div>
+        <div class="value-item"><span class="value-mark">✦</span><span><span class="acc">Таблица «Мои даты» после первого урока:</span> ваши годы и до какого срока идет период</span></div>
+        <div class="value-item"><span class="value-mark">✦</span><span><span class="acc">Семь коротких уроков,</span> каждый добавляет кусочек пазла к вашей карте</span></div>
+        <div class="value-item"><span class="value-mark">✦</span><span><span class="acc">Для каждого периода режим:</span> действовать сейчас или переждать и до какой даты</span></div>
+        <div class="value-item"><span class="value-mark">✦</span><span><span class="acc">На выходе одна страница:</span> что делаю сейчас, а что откладываю</span></div>
+      </div>
+
+      <a class="btn btn-primary" id="channelBtn" href="#" target="_blank">войти в канал</a>
+      <button class="btn btn-ghost" onclick="restartQuiz()">пройти заново</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if(tg){ tg.ready(); tg.expand(); try{ tg.setHeaderColor("#FFFFFF"); tg.setBackgroundColor("#FFFFFF"); }catch(e){} }
+
+// ССЫЛКА НА КАНАЛ
+const CHANNEL_LINK = "https://t.me/+SzuZKQDGXFBlY2U6";
+
+// ФОТОГРАФИЯ ЕКАТЕРИНЫ. Подставить ссылку на картинку, например
+// const PHOTO_URL = "https://astroeika.ru/photo.jpg";
+// Пока пусто, на месте фотографии стоит заглушка.
+const PHOTO_URL = "data:image/jpeg;base64,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";
+
+// ДОКУМЕНТЫ
+const DOC_CONSENT_URL = "https://disk.yandex.ru/i/mmdBpYPKfFZfNg"; // согласие на обработку ПДн
+const DOC_PRIVACY_URL = "https://disk.yandex.ru/i/fvcxGeBBqhvf7g"; // политика обработки ПДн
+const DOC_MAIL_URL    = "https://disk.yandex.ru/i/HESMpRsZ-lHhOw"; // согласие на рекламную рассылку
+const DOC_TERMS_URL   = "https://disk.yandex.ru/i/HclIiLHAt7xufg"; // оферта
+
+// Делать ли согласие на рассылку обязательным.
+// По закону это отдельное добровольное согласие, поэтому по умолчанию false.
+const REQUIRE_MARKETING = false;
+
+// Если поставить USE_BOT_DEEPLINK = true, кнопка ведет не в канал напрямую,
+// а в бота с меткой периода (?start=period_A). Бот запоминает ветку
+// и сам отдает ссылку на канал. Тогда в базе видно, кто с каким периодом пришел.
+const USE_BOT_DEEPLINK = false;
+const BOT_DEEPLINK = "https://t.me/astroassistent_AstroEika?start=period_";
+
+// ---------- СЦЕНАРИИ ----------
+const DIRECTIONS = {
+  "A": {
+    "step": "период 1 · развилка",
+    "title": "Год, когда надо выбрать",
+    "what": "Это решение вы уже сто раз приняли в голове. В одной версии все складывается, в другой вы через полгода сидите без денег и жалеете, и вторая картинка почему-то всегда ярче. Так и стоите перед двумя дверями: за одной вроде обрыв, <span class=\"u\">только непонятно, за какой</span>.",
+    "why": "Такие годы обычно приходят, когда снаружи ситуация дозрела, а внутри <span class=\"acc\">кончилось терпение</span>, на котором вы ехали до этого. Вопрос три года спокойно лежал, и вдруг его стало невозможно не замечать. Слабее вы за это время не стали.",
+    "next": "Развилка редко тянется дольше полутора лет. Закроется она в любом случае: выберете вы или выберут обстоятельства. Окно, в котором решение еще за вами, <span class=\"acc\">видно по карте заранее</span>, и его хватает, чтобы успеть подготовиться.",
+    "map": [
+      "<span class=\"acc\">Транзиты этого года:</span> какое окно у вас открыто и до какого месяца",
+      "<span class=\"acc\">Сатурн в вашей карте:</span> откуда осторожность и почему она усилилась именно сейчас"
+    ],
+    "step_text": "Разделите свое решение на обратимое и необратимое. С работы можно вернуться в найм, из другого города можно уехать обратно. Обратимого там <span class=\"u\">обычно больше, чем кажется в три часа ночи</span>.",
+    "secondary": "жизнь на паузе: покупки, зубы, планы, все откладывается до того момента, когда станет понятно.",
+    "regime_title": "Действовать, но в свое окно",
+    "regime": "У развилки есть окно, в котором решение ложится легче, и его <span class=\"acc\">видно по датам</span>. До окна готовитесь, в окно решаете. То, что решено раньше, чаще всего потом приходится переигрывать.",
+    "lessons": "<span class=\"acc\">Урок 2 про Сатурн</span>: что у вас сжимается и почему. Урок 3 про Юпитер: где открыто окно и до какого месяца."
+  },
+  "B": {
+    "step": "период 2 · рубеж",
+    "title": "Год, когда все правильно и все не то",
+    "what": "Снаружи все на месте: работа, дом, вас считают надежной. А внутри ровно и пусто. Жаловаться вроде не на что, и от этого только хуже, потому что <span class=\"u\">если все хорошо, а мне плохо, значит, дело во мне</span>.",
+    "why": "Это возрастной рубеж, и у него <span class=\"acc\">точные сроки</span>: около двадцати девяти и около сорока. В эти годы старые договоренности с собой перестают работать, и то, что держало, держать перестает. С депрессией и неблагодарностью это никак не связано. Это возраст, его проходят все, только по-разному.",
+    "next": "Такой период идет от года до двух с половиной, и внутри у него <span class=\"acc\">есть пик</span>. Когда пик пройдет, жизнь к прежней не вернется. Она соберется заново, и вашего в ней будет больше.",
+    "map": [
+      "<span class=\"acc\">Возвращение Сатурна или оппозиция Урана:</span> какой рубеж у вас и когда пик",
+      "<span class=\"acc\">Ваши годы Сатурна и Урана:</span> когда началось и когда отпустит"
+    ],
+    "step_text": "Вспомните пять моментов, когда время летело незаметно. Никакого предназначения, просто пять эпизодов из жизни. <span class=\"u\">Свое обычно видно в них</span>, в размышлениях его найти куда сложнее.",
+    "secondary": "ощущение, что время уходит: двери закрываются, а вы еще не начали.",
+    "regime_title": "Переждать пик, потом решать",
+    "regime": "На пике рубежа <span class=\"acc\">резких решений лучше не принимать</span>. Пик проходит, и то, что после него все еще кажется важным, ваше. Дата пика считается по карте, так что ждать придется не вслепую.",
+    "lessons": "<span class=\"acc\">Урок 2 про Сатурн</span>: возвращение Сатурна около двадцати девяти. Урок 6 про Уран: оппозиция около сорока и почему решения этих лет потом отменяют."
+  },
+  "C": {
+    "step": "период 3 · дом и близкие",
+    "title": "Год, в котором вас разобрали по частям",
+    "what": "Вы держите дом, работу, детей, маму. Хватает вас на всех, <span class=\"u\">кроме себя</span>. И вы замечаете, что стали дерганой: срываетесь на ребенка из-за разбросанных вещей, а потом полночи себя за это едите.",
+    "why": "Нагрузка на дом и близких приходит <span class=\"acc\">периодами</span>, и у вас сейчас как раз такой. В эти годы обостряется все семейное сразу: ребенок, муж, мама, квартира, здоровье старших. Справляться вы не разучились. Просто объем вырос, а сил столько же, сколько было.",
+    "next": "Такие периоды идут волнами по несколько месяцев, и между волнами <span class=\"acc\">есть просветы</span>, их видно по календарю. Когда знаешь, где просвет, можно выйти из режима постоянной готовности и поставить отдых на конкретную неделю.",
+    "map": [
+      "<span class=\"acc\">Ваш лунный тип:</span> как вы проходите тяжелые периоды и что вас восстанавливает",
+      "<span class=\"acc\">Коридор затмений:</span> две недели, когда лучше не выяснять отношения до конца, и просветы между такими коридорами"
+    ],
+    "step_text": "Поставьте в календарь два часа на себя на этой неделе. Конкретный день и час, <span class=\"u\">как встречу, которую нельзя отменить</span>.",
+    "secondary": "вина: стоит выбрать себя, и сразу кажется, что вы что-то воруете у своих.",
+    "regime_title": "Пережидать коридоры, действовать между ними",
+    "regime": "Большие перемены сейчас не ко времени. Коридоры затмений вы пережидаете, а в <span class=\"acc\">просветы между ними</span> ставите отдых, разговоры со своими и все, что давно откладывали.",
+    "lessons": "<span class=\"acc\">Урок 5 про Луну</span>: новолуния, полнолуния, коридор затмений, ваш лунный тип и где у вас просветы."
+  },
+  "D": {
+    "step": "период 4 · повтор",
+    "title": "Год, который уже был",
+    "what": "Вы уже меняли и работу, и мужчину. Сначала все выглядит иначе, а через год вы слышите знакомые интонации и узнаете знакомый финал. Где-то на третьем круге приходит неприятная мысль: <span class=\"u\">может, дело не в них</span>.",
+    "why": "Некоторые периоды возвращаются буквально: <span class=\"acc\">похожая конфигурация в карте повторяется</span> через одно и то же число лет, и с ней приходит похожая ситуация. Дежавю вас не обманывает. Только в этот раз вы уже знаете, чем все кончилось.",
+    "next": "Повтор длится примерно столько же, сколько в прошлый раз, и <span class=\"acc\">это можно посчитать</span>. У вас на руках готовая запись того, чем все закончилось, поэтому в этот раз есть шанс выйти раньше. Для этого круг надо узнать на входе, смена декораций его не размыкает.",
+    "map": [
+      "<span class=\"acc\">Повторяющаяся конфигурация:</span> через сколько лет она возвращается и когда придет в следующий раз",
+      "<span class=\"acc\">Признак на входе:</span> как узнать свой круг до того, как вы в него войдете"
+    ],
+    "step_text": "Выпишите свои повторы столбиком: как начиналось и как заканчивалось с каждой работой и с каждым мужчиной. <span class=\"u\">Общее видно прямо на бумаге</span>, еще до всякой карты.",
+    "secondary": "страх повторить жизнь своей мамы: ее слова, ее интонации, ее конечную станцию.",
+    "regime_title": "Действовать, но не так, как в прошлый раз",
+    "regime": "Если повтор просто переждать, он доиграет до знакомого финала. Тут нужно действие, только в другую сторону, и куда именно, показывает <span class=\"acc\">Северный узел</span>.",
+    "lessons": "<span class=\"acc\">Урок 4 про кармические узлы</span>: что у вас разворачивается и как действовать по Северному узлу."
+  },
+  "E": {
+    "step": "период 5 · пауза",
+    "title": "Год, в котором вы ждете, когда станет понятно",
+    "what": "Вроде ничего не происходит. Вы стараетесь, результата нет, и время идет мимо. Поэтому ответ ищется снаружи: астрологи, тарологи, психологи, приложения, а иногда и светофор. Все говорят красиво, «период трансформации», «доверьтесь потоку». Вы киваете, платите, а назавтра <span class=\"u\">ничего не изменилось</span>.",
+    "why": "Бывают периоды, в которые правда мало что двигается, и <span class=\"acc\">вашей вины тут нет</span>. Результат просто еще не собрался. Снаружи это похоже на застой, от застоя хочется бежать за ответом к кому угодно, а общие слова про трансформацию ожидание только растягивают.",
+    "next": "У такого периода есть конец, и <span class=\"acc\">его дату видно по карте</span>. По-моему, здесь вообще помогает только одно, точная дата. С ней ждать уже не бесконечно, и понятно, чем заняться до тех пор.",
+    "map": [
+      "<span class=\"acc\">Что происходит прямо сейчас:</span> конкретный транзит с конкретными датами",
+      "<span class=\"acc\">Когда пауза заканчивается:</span> у любого транзита есть выход, и его можно посчитать"
+    ],
+    "step_text": "Откройте последний разбор, за который платили, и найдите там хоть одну фразу, которую нельзя было бы сказать любой другой женщине. <span class=\"u\">Найти удается редко.</span>",
+    "secondary": "усталость от того, что вы платите за слова, которые и так знали.",
+    "regime_title": "Переждать, зная дату",
+    "regime": "Решения этого периода часто потом отменяют, поэтому его <span class=\"acc\">пережидают</span>. Пока ждете, можно спокойно готовить то, что начнете после.",
+    "lessons": "<span class=\"acc\">Урок 6 про Уран</span>: период, в который решения отменяют. По таблице с вашими годами видно, идет ли он у вас и до какой даты."
+  }
+};
+
+// ---------- ПЕРСОНАЛЬНЫЕ БЛОКИ ПРО КАРТУ ----------
+const BIRTH_NOTE = [
+  "У вас есть <span class=\"acc\">точное время</span>, это редкость. Для мини-курса оно не понадобится, там все считается по дате и месту. Пригодится оно позже, на интенсиве: с ним открывается вся карта, с домами и асцендентом.",
+  "Время известно примерно, и для мини-курса этого достаточно: <span class=\"acc\">время рождения там не нужно</span>. Космограмма строится по дате и месту, и периоды со сроками в ней видно.",
+  "Времени нет нигде, и для мини-курса это не помеха: <span class=\"acc\">время рождения там не нужно</span>. Космограмма строится по дате и месту, и периоды со сроками в ней видно. Возможно, прошлые прогнозы были мимо как раз потому, что время в них ставили наугад.",
+  "Для мини-курса <span class=\"acc\">время рождения не нужно</span>, хватит даты и места. Но на будущее поищите его: свидетельство, мамины записи, медицинская карта. Оно понадобится, если захотите карту с домами и асцендентом."
+];
+
+const EXP_NOTE = [
+  "Гороскоп по знаку дает тему месяца, одну на миллионы людей. Карта показывает, <span class=\"acc\">в какую сферу вашей жизни</span> эта тема попадет.",
+  "Карту вам уже разбирали. Разбор слушают, а через неделю почти ничего не помнят, у всех так. Запоминается то, что <span class=\"acc\">вы разобрали сами</span>.",
+  "Вы уже пробовали смотреть сами, значит, открыть карту не боитесь, а это самое трудное. Дальше обычно не хватает <span class=\"acc\">порядка: с чего начинать и что читать первым</span>.",
+  "Вы смотрели карты близких, и так в астрологию входить быстрее всего: этих людей вы знаете лучше любого специалиста и <span class=\"acc\">сразу видите, где карта попадает</span>.",
+  "Вы начинаете с нуля, и это даже удобно: <span class=\"acc\">разучиваться от гороскопов для всех</span> не придется."
+];
+
+// ---------- ВОПРОСЫ ----------
+// "stage": задает вступление к результату (индекс < 2 => "12", иначе "34")
+// "score": варианты содержат период A-E
+// "birth": знает ли точное время рождения, задает персональный блок
+// "exp": опыт в астрологии, задает персональный блок
+// "ready": задает финальный призыв (индекс < 2 => "12", иначе "34")
+const QUESTIONS = [
+  { type:"stage", text:"Как давно вы живете в этом состоянии?", options:[
+    "Несколько месяцев, началось недавно",
+    "Примерно год",
+    "Года два или три",
+    "Уже не помню, когда было иначе"
+  ]},
+
+  { type:"score", text:"С какой мыслью вы чаще всего просыпаетесь в последнее время?", options:[
+    {d:"A", t:"«Надо решать, и я опять ничего не решила»"},
+    {d:"B", t:"«Вроде все есть, а радости никакой»"},
+    {d:"C", t:"«Опять все на мне»"},
+    {d:"D", t:"«Это уже было, я это проходила»"},
+    {d:"E", t:"«Когда же наконец станет понятно»"}
+  ]},
+
+  { type:"score", text:"В чем вам труднее всего признаться даже себе?", options:[
+    {d:"A", t:"«Я так боюсь ошибиться, что не выбираю вообще»"},
+    {d:"B", t:"«Я живу жизнь, которую от меня ждали, а свою отложила»"},
+    {d:"C", t:"«Иногда я злюсь на своих за то, что они меня держат»"},
+    {d:"D", t:"«Кажется, дело не в них, а во мне»"},
+    {d:"E", t:"«Я трачу на разборы деньги и вру про косметолога»"}
+  ]},
+
+  { type:"score", text:"Что вы обычно ищете в гороскопе или в прогнозе?", options:[
+    {d:"A", t:"Когда наконец можно решиться"},
+    {d:"B", t:"Будет ли в моей жизни хоть что-то другое"},
+    {d:"C", t:"Что будет с мужем, с ребенком, с мамой"},
+    {d:"D", t:"Почему у меня опять то же самое"},
+    {d:"E", t:"Когда это уже наконец закончится"}
+  ]},
+
+  { type:"score", text:"Чего вы боитесь больше всего?", options:[
+    {d:"A", t:"Что выберу не ту дверь и назад пути не будет"},
+    {d:"B", t:"Что в семьдесят пять пойму, что так и не начала жить"},
+    {d:"C", t:"Что, выбрав себя, сломаю жизнь своим"},
+    {d:"D", t:"Что куда бы я ни пришла, я притащу туда себя"},
+    {d:"E", t:"Что этот серый фон и есть вся моя жизнь дальше"}
+  ]},
+
+  { type:"score", text:"Про что вы в первую очередь посмотрели бы свою карту?", options:[
+    {d:"A", t:"Когда мне действовать, а когда лучше подождать"},
+    {d:"B", t:"Что во мне мое, а что я взяла у других"},
+    {d:"C", t:"Как понять своего ребенка и своего мужа"},
+    {d:"D", t:"Почему у меня повторяется одна и та же история"},
+    {d:"E", t:"Когда этот период закончится и что будет потом"}
+  ]},
+
+  { type:"score", text:"Что вам чаще всего говорили астрологи, тарологи, психологи?", options:[
+    {d:"A", t:"Много интересного, но решиться мне это так и не помогло"},
+    {d:"B", t:"Рассказали, какая я чувствительная. Я это и так знала"},
+    {d:"C", t:"Было некогда вникать, я даже запись не переслушала"},
+    {d:"D", t:"Каждый говорил свое, а жизнь шла по тому же кругу"},
+    {d:"E", t:"Вышла окрыленная, а через неделю все стало как было"}
+  ]},
+
+  { type:"score", text:"Что останавливает вас разобраться в своей карте самой?", options:[
+    {d:"A", t:"Боюсь увидеть там то, после чего придется решать"},
+    {d:"B", t:"Кажется, это не для меня, я в таком не разберусь"},
+    {d:"C", t:"Некогда, на мне и так все висит"},
+    {d:"D", t:"Пробовала, ничего не поняла и бросила"},
+    {d:"E", t:"Проще спросить того, кто уже умеет"}
+  ]},
+
+  { type:"score", text:"Если бы вы точно знали, сколько этот период продлится, что бы изменилось?", options:[
+    {d:"A", t:"Я бы перестала тянуть и назначила дату решения"},
+    {d:"B", t:"Я бы не спешила и не хваталась за первое попавшееся"},
+    {d:"C", t:"Я бы честно сказала своим, что мне нужна передышка"},
+    {d:"D", t:"Я бы поняла, где выйти, а не входить в новый круг"},
+    {d:"E", t:"Я бы перестала ждать и начала жить сейчас"}
+  ]},
+
+  { type:"birth", text:"Вы знаете точное время своего рождения?", options:[
+    "Да, до минуты, оно записано",
+    "Примерно, мама помнит только часть дня",
+    "Нет, нигде не записано",
+    "Никогда не проверяла"
+  ]},
+
+  { type:"exp", text:"Насколько далеко вы уже зашли в астрологии?", options:[
+    "Читаю гороскоп по своему знаку, и все",
+    "Была на разборах, мою карту смотрел специалист",
+    "Пробовала сама разбираться в своей карте",
+    "Смотрела карты близких: ребенка, мужа, мамы",
+    "Раньше астрологией не интересовалась"
+  ]},
+
+  { type:"ready", text:"Насколько вы готовы что-то менять?", options:[
+    "Пока просто смотрю, время терпит",
+    "Готова, но не знаю, с чего начать",
+    "Готова, нужны понятные шаги",
+    "Уже начала, хочу быстрее"
+  ]}
+];
+
+const RESULT_INTRO = {
+  "12": "Началось недавно, и сейчас самое время понять, во что вы входите.",
+  "34": "Длится давно, и кое о чем вы наверняка догадывались. Вот как это называется и сколько обычно длится."
+};
+
+const FINAL_CTA = {
+  "12": "Решать прямо сейчас ничего не нужно. В канале я по очереди разбираю все пять периодов и рассказываю про мини-курс «Мой период», где уже после первого урока у вас на руках <span class=\"acc\">таблица с датами вашего периода</span>. Заходите, смотрите в своем темпе.",
+  "34": "Раз вы дочитали, что-то совпало. С таким периодом полезнее всего <span class=\"acc\">узнать его срок</span>. В мини-курсе «Мой период» таблица с вашими датами будет уже после первого урока, а семь коротких уроков объясняют каждую ее строку. Подробности в канале, без созвонов и личной переписки."
+};
+
+// ---------- СОСТОЯНИЕ ----------
+let current = -1;
+let scores = {A:0,B:0,C:0,D:0,E:0};
+let lastSeen = {A:-1,B:-1,C:-1,D:-1,E:-1};
+let stageBranch = "12";
+let readyBranch = "12";
+let birthIdx = 3;
+let expIdx = 4;
+let primaryKey = "A";
+
+if(PHOTO_URL){
+  const box = document.getElementById("photoBox");
+  box.innerHTML = "";
+  const img = document.createElement("img");
+  img.src = PHOTO_URL;
+  img.alt = "Екатерина Холкина, астропсихолог";
+  box.appendChild(img);
+}
+
+// ---------- СОГЛАСИЯ ----------
+function renderDoc(boxId, url, label){
+  const box = document.getElementById(boxId);
+  if(url){
+    const a = document.createElement("a");
+    a.href = url; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = label;
+    box.appendChild(a);
+  } else {
+    const s = document.createElement("span");
+    s.className = "doc-pending";
+    s.textContent = label;
+    box.appendChild(s);
+  }
+}
+renderDoc("docConsent", DOC_CONSENT_URL, "согласие на обработку персональных данных");
+renderDoc("docPrivacy", DOC_PRIVACY_URL, "политику обработки персональных данных");
+renderDoc("docTerms", DOC_TERMS_URL, "офертой");
+renderDoc("docMail", DOC_MAIL_URL, "согласие на получение рекламной рассылки");
+
+const chkData = document.getElementById("chkData");
+const chkTerms = document.getElementById("chkTerms");
+const chkMail = document.getElementById("chkMail");
+const startBtn = document.getElementById("startBtn");
+
+if(REQUIRE_MARKETING){ document.getElementById("mailReq").hidden = false; }
+
+function consentOk(){
+  return chkData.checked && chkTerms.checked && (!REQUIRE_MARKETING || chkMail.checked);
+}
+function updateStart(){ startBtn.disabled = !consentOk(); }
+[chkData, chkTerms, chkMail].forEach(c=> c.addEventListener("change", updateStart));
+updateStart();
+
+function showScreen(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.querySelector('[data-screen="'+name+'"]').classList.add("active");
+}
+
+function startQuiz(){
+  if(!consentOk()) return;
+  current = 0;
+  scores = {A:0,B:0,C:0,D:0,E:0};
+  lastSeen = {A:-1,B:-1,C:-1,D:-1,E:-1};
+  renderQuestion();
+}
+
+function renderQuestion(){
+  showScreen("question");
+  const q = QUESTIONS[current];
+
+  const progress = document.getElementById("progress");
+  progress.innerHTML = "";
+  QUESTIONS.forEach((_, i)=>{
+    const dot = document.createElement("i");
+    if(i < current) dot.className = "done";
+    else if(i === current) dot.className = "current";
+    progress.appendChild(dot);
+  });
+
+  document.getElementById("qNum").textContent = "Вопрос " + (current+1) + " из " + QUESTIONS.length;
+  document.getElementById("qText").textContent = q.text;
+
+  const optsWrap = document.getElementById("qOptions");
+  optsWrap.innerHTML = "";
+  q.options.forEach((opt, idx)=>{
+    const btn = document.createElement("button");
+    btn.className = "btn btn-option";
+    btn.textContent = typeof opt === "string" ? opt : opt.t;
+    btn.onclick = ()=> selectAnswer(idx);
+    optsWrap.appendChild(btn);
+  });
+  window.scrollTo(0,0);
+}
+
+function selectAnswer(idx){
+  const q = QUESTIONS[current];
+
+  if(q.type === "stage"){
+    stageBranch = idx < 2 ? "12" : "34";
+  } else if(q.type === "ready"){
+    readyBranch = idx < 2 ? "12" : "34";
+  } else if(q.type === "birth"){
+    birthIdx = idx;
+  } else if(q.type === "exp"){
+    expIdx = idx;
+  } else if(q.type === "score"){
+    const d = q.options[idx].d;
+    scores[d] += 1;
+    lastSeen[d] = current;
+  }
+
+  current++;
+  if(current < QUESTIONS.length){
+    renderQuestion();
+  } else {
+    renderResult();
+  }
+}
+
+function renderResult(){
+  // ранжируем: сначала по очкам, при равенстве выигрывает выбранный позже
+  const ranked = Object.keys(scores).sort((a,b)=>{
+    if(scores[b] !== scores[a]) return scores[b]-scores[a];
+    return lastSeen[b]-lastSeen[a];
+  });
+  primaryKey = ranked[0];
+  const primary = DIRECTIONS[ranked[0]];
+  const secondary = DIRECTIONS[ranked[1]];
+
+  document.getElementById("resultStep").textContent = primary.step;
+  document.getElementById("resultTitle").textContent = primary.title;
+  document.getElementById("resultIntro").textContent = RESULT_INTRO[stageBranch];
+
+  document.getElementById("blockWhat").innerHTML = primary.what;
+  document.getElementById("blockWhy").innerHTML = primary.why;
+  document.getElementById("blockNext").innerHTML = primary.next;
+
+  const mapWrap = document.getElementById("mapBody");
+  mapWrap.innerHTML = "";
+  primary.map.forEach(item=>{
+    const row = document.createElement("div");
+    row.className = "value-item";
+    const mark = document.createElement("span");
+    mark.className = "value-mark";
+    mark.textContent = "✦";
+    const txt = document.createElement("span");
+    txt.innerHTML = item;
+    row.appendChild(mark);
+    row.appendChild(txt);
+    mapWrap.appendChild(row);
+  });
+
+  document.getElementById("birthNote").innerHTML = BIRTH_NOTE[birthIdx];
+  document.getElementById("regimeTitle").textContent = primary.regime_title;
+  document.getElementById("regimeBody").innerHTML = primary.regime;
+  document.getElementById("lessonNote").innerHTML = primary.lessons;
+  document.getElementById("expNote").innerHTML = EXP_NOTE[expIdx];
+
+  document.getElementById("stepBody").innerHTML = primary.step_text;
+  document.getElementById("secondaryTitle").textContent = secondary.title;
+  document.getElementById("secondaryBody").textContent = secondary.secondary;
+
+  document.getElementById("ctaText").innerHTML = FINAL_CTA[readyBranch];
+  document.getElementById("channelBtn").href =
+    USE_BOT_DEEPLINK ? (BOT_DEEPLINK + primaryKey) : CHANNEL_LINK;
+
+  showScreen("result");
+  window.scrollTo(0,0);
+}
+
+// Внутри Telegram ссылки на t.me открываем через Telegram, остальные во встроенном браузере
+document.addEventListener("click", function(e){
+  const a = e.target.closest("a[href]");
+  if(!a || !tg) return;
+  const href = a.getAttribute("href");
+  if(!href || href === "#") return;
+  e.preventDefault();
+  try{
+    if(href.indexOf("https://t.me/") === 0 && tg.openTelegramLink){ tg.openTelegramLink(href); }
+    else if(tg.openLink){ tg.openLink(href); }
+    else { window.open(href, "_blank"); }
+  }catch(err){ window.open(href, "_blank"); }
+});
+
+function restartQuiz(){
+  current = -1;
+  showScreen("welcome");
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>
